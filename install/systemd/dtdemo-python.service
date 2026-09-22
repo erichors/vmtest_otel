@@ -1,0 +1,24 @@
+[Unit]
+Description=dt-demo-app pricing-python tier (Flask/gunicorn, port 8000)
+After=postgresql.service network-online.target
+Requires=network-online.target
+
+[Service]
+Type=simple
+User=dtdemo
+Group=dtdemo
+WorkingDirectory=/opt/dtdemo/app/python-tier
+EnvironmentFile=/etc/dtdemo/python.env
+# opentelemetry-instrument wraps the gunicorn master process, wires up the
+# global TracerProvider/OTLP exporter, and re-applies auto-instrumentation
+# (Flask, psycopg2, requests, logging) inside each forked worker before
+# app.py's own code runs (see python-tier/app.py module docstring).
+ExecStart=/opt/dtdemo/venv/bin/opentelemetry-instrument /opt/dtdemo/venv/bin/gunicorn -c gunicorn.conf.py app:app
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dtdemo-python
+
+[Install]
+WantedBy=multi-user.target

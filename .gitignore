@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Java / Maven
+java-tier/target/
+*.class
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Local secrets — copy the templates in install/ and edit those instead
+install/*.local.env
+*.pem

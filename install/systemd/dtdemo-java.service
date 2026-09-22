@@ -1,0 +1,25 @@
+[Unit]
+Description=dt-demo-app checkout-java tier (Spring Boot, port 8080)
+# NOTE: if 01-provision-host.sh detected your AL2023 image registers PostgreSQL
+# under a different unit name (it checks for "postgresql15.service"), change
+# "postgresql.service" below to match: systemctl list-unit-files | grep postgresql
+After=postgresql.service network-online.target
+Requires=postgresql.service network-online.target
+
+[Service]
+Type=simple
+User=dtdemo
+Group=dtdemo
+EnvironmentFile=/etc/dtdemo/java.env
+# Tracing comes exclusively from the OpenTelemetry Java agent below; the app
+# itself declares no OTel SDK dependency (see java-tier/pom.xml). Dynatrace
+# OneAgent on this host is infra-only, so there is exactly one tracer in play.
+ExecStart=/usr/bin/java -javaagent:/opt/dtdemo/otel/opentelemetry-javaagent.jar -jar /opt/dtdemo/bin/checkout-java.jar
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dtdemo-java
+
+[Install]
+WantedBy=multi-user.target

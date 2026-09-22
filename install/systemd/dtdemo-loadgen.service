@@ -1,0 +1,22 @@
+[Unit]
+Description=dt-demo-app synthetic load generator (NOT OTel-instrumented - it is the client, not part of the traced app)
+After=dtdemo-java.service dtdemo-python.service
+Requires=dtdemo-java.service dtdemo-python.service
+
+[Service]
+Type=simple
+User=dtdemo
+Group=dtdemo
+WorkingDirectory=/opt/dtdemo/app/loadgen
+ExecStart=/opt/dtdemo/venv/bin/python /opt/dtdemo/app/loadgen/loadgen.py --target http://localhost:8080
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dtdemo-loadgen
+
+# Deliberately NOT enabled by 04-build-and-deploy.sh - start this manually
+# (systemctl enable --now dtdemo-loadgen, or run loadgen.py directly) when
+# you're ready to begin the demo.
+[Install]
+WantedBy=multi-user.target

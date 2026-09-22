@@ -1,0 +1,31 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: checkout-java
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/dtdemo}
+    username: ${DB_USER:dtdemo}
+    password: ${DB_PASSWORD:dtdemo}
+    hikari:
+      maximum-pool-size: 10
+
+# Base URL of the pricing-python tier. The OpenTelemetry Java agent auto-instruments
+# RestTemplate and injects the W3C traceparent header on every call made through it,
+# so no manual header propagation code is needed anywhere in this app.
+pricing:
+  base-url: ${PRICING_URL:http://localhost:8000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  pattern:
+    # trace_id/span_id are populated in the MDC by the OpenTelemetry Java agent's
+    # logback instrumentation, letting Dynatrace log monitoring correlate log lines
+    # with the exact span that emitted them.
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level trace_id=%X{trace_id} span_id=%X{span_id} %logger{36} - %msg%n"

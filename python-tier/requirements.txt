@@ -1,0 +1,16 @@
+flask>=3.0.0
+gunicorn>=22.0.0
+psycopg2-binary>=2.9.9
+
+# OpenTelemetry - this process is launched as:
+#   opentelemetry-instrument gunicorn -c gunicorn.conf.py app:app
+# opentelemetry-distro pulls in the API/SDK and the "opentelemetry-bootstrap"
+# console script used to install auto-instrumentation packages; the exporter
+# below ships spans as OTLP/HTTP-protobuf to the local Dynatrace OneAgent EEC
+# endpoint (http://localhost:14499/otlp/v1/traces) via standard OTEL_* env vars.
+opentelemetry-distro>=0.46b0
+opentelemetry-exporter-otlp-proto-http>=1.25.0
+opentelemetry-instrumentation-flask>=0.46b0
+opentelemetry-instrumentation-psycopg2>=0.46b0
+opentelemetry-instrumentation-requests>=0.46b0
+opentelemetry-instrumentation-logging>=0.46b0
