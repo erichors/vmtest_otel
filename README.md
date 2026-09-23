@@ -87,93 +87,77 @@ itself looks perfectly healthy.
     manual API calls).
 - **IAM**: not required for anything in this demo.
 
-### Build the instance from scratch (AWS CLI)
+### Launch the instance (AWS Management Console)
 
-Everything below assumes you have the AWS CLI v2 installed and configured
-(`aws configure`) with credentials that can create EC2 key pairs, security
-groups, and instances in the target region. Replace `us-east-1` throughout if
-you want a different region.
+1. Sign in to the [AWS Console](https://console.aws.amazon.com/), and in the
+   top-right region picker, select the region you want to deploy into (e.g.
+   `us-east-1`). Note it down — you'll need it later to find the instance
+   again.
+2. Open the **EC2** service, then click **Instances** in the left nav, then
+   the orange **Launch instance** button.
+3. **Name and tags**: enter `dtdemo-app01`.
+4. **Application and OS Images (Amazon Machine Image)**: the default
+   quick-start tab already shows **Amazon Linux**. Make sure the dropdown
+   underneath is set to **Amazon Linux 2023 AMI** (the default/first option),
+   architecture **64-bit (x86)**.
+5. **Instance type**: click the instance type dropdown/search box and select
+   `t3.medium`.
+6. **Key pair (login)**:
+   - Click **Create new key pair**.
+   - Key pair name: `dtdemo-key`.
+   - Key pair type: **RSA**. Private key file format: **.pem** (use `.ppk`
+     only if you're connecting with PuTTY on Windows).
+   - Click **Create key pair** — your browser downloads the `.pem` file
+     immediately. Move it somewhere durable, e.g. `~/.ssh/dtdemo-key.pem`.
+     AWS does not let you download it again later.
+7. **Network settings**: click **Edit** in the top-right of this panel.
+   - VPC: leave the default VPC selected (or pick your own if you have one).
+   - Auto-assign public IP: **Enable**.
+   - Firewall (security groups): select **Create security group**.
+     - Security group name: `dtdemo-sg`.
+     - It will already show one inbound rule for SSH (port 22). Change its
+       **Source type** to **My IP** so AWS fills in your current public IP
+       automatically, scoped with a `/32`.
+     - Click **Add security group rule** for a second rule only if you want
+       to hit `checkout-java` from your laptop for a demo: Type = **Custom
+       TCP**, Port range = `8080`, Source type = **My IP**. Skip this rule
+       entirely if you don't need outside access — see the perimeter-control
+       note above.
+8. **Configure storage**: change the root volume size to `20` (GiB), and the
+   volume type dropdown to **gp3**.
+9. Review the **Summary** panel on the right, then click **Launch instance**.
+10. Click the instance ID link on the confirmation page (or go back to
+    **Instances**) and wait until **Instance state** shows **Running** and
+    **Status check** shows **2/2 checks passed** (takes 1-2 minutes).
+11. Select the instance's checkbox, click **Connect** at the top, open the
+    **SSH client** tab, and copy the example `ssh -i ...` command shown there
+    — it already has the correct public IP/DNS filled in.
+12. From your local terminal:
+    ```bash
+    chmod 400 ~/.ssh/dtdemo-key.pem
+    ```
+    then paste the `ssh` command you copied in step 11 (or run it as
+    `ssh -i ~/.ssh/dtdemo-key.pem ec2-user@<public-ip-or-dns>`, using the
+    Public IPv4 address/DNS shown on the instance's **Details** tab).
 
-```bash
-# 0. Pick a region and grab your current public IP for the SSH rule
-export AWS_REGION=us-east-1
-export MY_IP="$(curl -s https://checkip.amazonaws.com)/32"
+You're now logged into the instance as `ec2-user`. Continue to Prerequisites
+and Install below.
 
-# 1. Look up the latest Amazon Linux 2023 (x86_64) AMI via SSM public parameters
-#    (no hardcoded AMI IDs - these go stale and differ per region)
-export AMI_ID="$(aws ssm get-parameter \
-  --region "$AWS_REGION" \
-  --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64 \
-  --query 'Parameter.Value' --output text)"
-echo "AMI: $AMI_ID"
+### Terminate the instance and clean up the AWS-side resources (Console)
 
-# 2. Create a key pair and save the private key locally (chmod 400 is required
-#    for ssh to accept it)
-aws ec2 create-key-pair --region "$AWS_REGION" \
-  --key-name dtdemo-key \
-  --query 'KeyMaterial' --output text > ~/.ssh/dtdemo-key.pem
-chmod 400 ~/.ssh/dtdemo-key.pem
-
-# 3. Find your default VPC (or swap in a specific --vpc-id you already use)
-export VPC_ID="$(aws ec2 describe-vpcs --region "$AWS_REGION" \
-  --filters Name=is-default,Values=true \
-  --query 'Vpcs[0].VpcId' --output text)"
-
-# 4. Create a security group scoped to this demo
-export SG_ID="$(aws ec2 create-security-group --region "$AWS_REGION" \
-  --group-name dtdemo-sg \
-  --description "dt-demo-app: SSH + checkout-java" \
-  --vpc-id "$VPC_ID" \
-  --query 'GroupId' --output text)"
-
-# SSH from your IP only
-aws ec2 authorize-security-group-ingress --region "$AWS_REGION" \
-  --group-id "$SG_ID" --protocol tcp --port 22 --cidr "$MY_IP"
-
-# checkout-java from your IP only (drop/edit this rule if you don't need
-# outside access - see the perimeter-control note above)
-aws ec2 authorize-security-group-ingress --region "$AWS_REGION" \
-  --group-id "$SG_ID" --protocol tcp --port 8080 --cidr "$MY_IP"
-
-# 5. Launch the instance: t3.medium, 20GB gp3 root volume, AL2023
-export INSTANCE_ID="$(aws ec2 run-instances --region "$AWS_REGION" \
-  --image-id "$AMI_ID" \
-  --instance-type t3.medium \
-  --key-name dtdemo-key \
-  --security-group-ids "$SG_ID" \
-  --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":20,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
-  --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=dtdemo-app01}]' \
-  --query 'Instances[0].InstanceId' --output text)"
-echo "Instance: $INSTANCE_ID"
-
-# 6. Wait for it to come up, then grab its public IP
-aws ec2 wait instance-running --region "$AWS_REGION" --instance-ids "$INSTANCE_ID"
-export PUBLIC_IP="$(aws ec2 describe-instances --region "$AWS_REGION" \
-  --instance-ids "$INSTANCE_ID" \
-  --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)"
-echo "Public IP: $PUBLIC_IP"
-
-# 7. SSH in (give cloud-init a few seconds to finish on first boot)
-ssh -i ~/.ssh/dtdemo-key.pem ec2-user@"$PUBLIC_IP"
-```
-
-Prefer the console instead? Launch an instance with: AMI = latest Amazon
-Linux 2023, type = `t3.medium`, a key pair you control, a security group
-matching the rules above, and a 20GB gp3 root volume — then SSH in as
-`ec2-user` and skip to the Install section below.
-
-### Terminate the instance and clean up the AWS-side resources
-
-Run this when you're done (in addition to the app-level teardown at the
+When you're done demoing (in addition to the app-level teardown at the
 bottom of this README):
 
-```bash
-aws ec2 terminate-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID"
-aws ec2 wait instance-terminated --region "$AWS_REGION" --instance-ids "$INSTANCE_ID"
-aws ec2 delete-security-group --region "$AWS_REGION" --group-id "$SG_ID"
-aws ec2 delete-key-pair --region "$AWS_REGION" --key-name dtdemo-key
-rm -f ~/.ssh/dtdemo-key.pem
-```
+1. EC2 > **Instances** > select `dtdemo-app01` > **Instance state** >
+   **Terminate instance** > confirm.
+2. EC2 > **Security Groups** (left nav) > select `dtdemo-sg` > **Actions** >
+   **Delete security group** > confirm. (AWS will refuse this if the
+   instance hasn't fully terminated yet — wait a minute and retry.)
+3. EC2 > **Key Pairs** (left nav) > select `dtdemo-key` > **Actions** >
+   **Delete** > confirm. Then delete the local file:
+   ```bash
+   rm -f ~/.ssh/dtdemo-key.pem
+   ```
 
 ## Dynatrace prerequisites
 
@@ -193,11 +177,37 @@ rm -f ~/.ssh/dtdemo-key.pem
 3. Remember port 14499 only starts listening a minute or two **after** you
    flip the toggle above - don't troubleshoot prematurely.
 
+## Prerequisites (on the instance)
+
+You're SSH'd into a stock Amazon Linux 2023 instance at this point - nothing
+is installed yet. `install/01-provision-host.sh` (next section) installs
+everything the app needs, but you need **git** before you can even clone
+this repo down, so install that much by hand first:
+
+```bash
+sudo dnf -y update
+sudo dnf -y install git java-17-amazon-corretto-devel maven python3 python3-pip curl jq tar
+```
+
+Verify each landed:
+
+```bash
+git --version       # git version 2.x
+java -version       # openjdk version "17...", Amazon Corretto
+mvn -version        # Apache Maven 3.x
+python3 --version   # Python 3.9+
+```
+
+This is the same package list `01-provision-host.sh` installs, so running it
+again in the next step is harmless - it'll just no-op on anything already
+present. You only need to do this by hand if you want git available before
+that script exists on the box (i.e. before you've cloned the repo), or if
+you're sanity-checking the AMI before proceeding.
+
 ## Install
 
-Run these in order, as root, on the EC2 instance. First get this repo onto
-the box (git clone, scp, or rsync) - `04-build-and-deploy.sh` expects it at
-`/opt/dtdemo/app`.
+Run these in order, as root, on the EC2 instance. `04-build-and-deploy.sh`
+expects the repo to be checked out at `/opt/dtdemo/app`.
 
 ```bash
 # 0. Get the repo onto the box
@@ -398,7 +408,9 @@ sudo -u postgres psql -c "DROP ROLE dtdemo;"
 sudo /opt/dynatrace/oneagent/agent/uninstall.sh
 ```
 
-Then terminate the EC2 instance from the AWS console/CLI.
+Then terminate the EC2 instance and clean up the security group/key pair -
+see "Terminate the instance and clean up the AWS-side resources (Console)"
+above.
 
 ## Cost note
 
