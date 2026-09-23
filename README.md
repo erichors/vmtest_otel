@@ -412,6 +412,27 @@ cd /opt/dtdemo/app/loadgen
   `pip install -r requirements.txt` - `requirements.txt` pins the
   instrumentation packages directly, but bootstrap is still the safety net
   for anything it detects that isn't pinned.
+- **Host shows "Full stack" instead of "Infrastructure" monitoring mode** in
+  the tenant's Hosts page: `--set-infra-only` (used by older docs/scripts) is
+  a deprecated installer flag that current OneAgent versions silently
+  ignore, falling back to full-stack. `install/02-install-oneagent.sh` uses
+  the current flag, `--set-monitoring-mode=infra-only` - if a host is
+  already installed and wrongly in full-stack mode, fix it without
+  reinstalling:
+  ```bash
+  sudo /opt/dynatrace/oneagent/agent/tools/oneagentctl --set-monitoring-mode=infra-only --restart-service
+  sudo /opt/dynatrace/oneagent/agent/tools/oneagentctl --get-monitoring-mode   # should now print infra-only
+  ```
+  `oneagentctl` refuses to apply monitoring-mode changes while the service is
+  running - `--restart-service` stops it, applies the change, and starts it
+  back up in one step. A plain `systemctl restart oneagent` afterward is not
+  a substitute; without `--restart-service` the config change is silently
+  rejected (`oneagentctl` prints "Configuration changes were not applied,
+  OneAgent service must be stopped first").
+  This matters beyond cosmetics: in full-stack mode OneAgent also injects its
+  own deep-code instrumentation into the Java/Python processes, which can
+  create duplicate or conflicting service entities alongside the
+  OTel-generated ones this demo is built around.
 
 ## Teardown
 

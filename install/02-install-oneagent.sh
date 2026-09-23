@@ -73,8 +73,11 @@ echo "    downloaded ${SIZE} bytes"
 chmod +x "${INSTALLER_PATH}"
 
 echo "==> Installing OneAgent (infrastructure-monitoring-only mode)"
+# --set-infra-only is deprecated and is silently ignored by current OneAgent
+# versions (falls back to full-stack) - --set-monitoring-mode=infra-only is
+# the current flag.
 /bin/sh "${INSTALLER_PATH}" \
-  --set-infra-only=true \
+  --set-monitoring-mode=infra-only \
   --set-app-log-content-access=true \
   --set-host-group=dtdemo-otel \
   --set-host-name=dtdemo-app01
