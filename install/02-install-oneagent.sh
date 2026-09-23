@@ -15,7 +15,15 @@
 #   ./02-install-oneagent.sh https://abc12345.live.dynatrace.com dt0c01.xxx
 #
 # DT_ENV_URL  - your Dynatrace environment/tenant base URL (no trailing slash)
-# DT_PAAS_TOKEN - a Dynatrace API token with "PaaS integration - installer download" scope
+# DT_PAAS_TOKEN - either token type works, with the matching auth scheme picked
+#   automatically based on its prefix:
+#     dt0c01.xxx (classic API token, scope "PaaS integration - installer
+#                 download") -> sent as "Authorization: Api-Token <token>"
+#     dt0s01.xxx / dt0sNN.xxx (platform token) -> sent as
+#                 "Authorization: Bearer <token>"
+#   Classic tokens are generated on the "Access tokens (Classic)" page;
+#   platform tokens are generated on the separate "Platform tokens" page -
+#   both work against this endpoint, just with different header schemes.
 
 set -euo pipefail
 
@@ -42,8 +50,16 @@ fi
 INSTALLER_PATH="/tmp/Dynatrace-OneAgent-Linux.sh"
 DOWNLOAD_URL="${DT_ENV_URL}/api/v1/deployment/installer/agent/unix/default/latest?arch=x86"
 
-echo "==> Downloading OneAgent installer from ${DT_ENV_URL}"
-curl -sS -o "${INSTALLER_PATH}" -H "Api-Token: ${DT_PAAS_TOKEN}" "${DOWNLOAD_URL}"
+# Classic API tokens (dt0c01.xxx) use the "Api-Token" auth scheme; platform
+# tokens (dt0sNN.xxx) use "Bearer" instead - pick the right one automatically.
+if [[ "${DT_PAAS_TOKEN}" == dt0c01.* ]]; then
+  AUTH_SCHEME="Api-Token"
+else
+  AUTH_SCHEME="Bearer"
+fi
+
+echo "==> Downloading OneAgent installer from ${DT_ENV_URL} (auth scheme: ${AUTH_SCHEME})"
+curl -sS -o "${INSTALLER_PATH}" -H "Authorization: ${AUTH_SCHEME} ${DT_PAAS_TOKEN}" "${DOWNLOAD_URL}"
 
 SIZE=$(stat -c%s "${INSTALLER_PATH}" 2>/dev/null || echo 0)
 if [[ "${SIZE}" -lt 10000 ]]; then

@@ -171,9 +171,16 @@ bottom of this README):
      mode** - it is only unavailable in containerized/classic full-stack setups
      without a host OneAgent, which doesn't apply here since OneAgent is
      installed directly on the EC2 host.
-2. **PaaS token**: Settings > Integration > Dynatrace API - create a token with
-   the "PaaS integration - installer download" scope (this is what
-   `install/02-install-oneagent.sh` uses to download the OneAgent installer).
+2. **PaaS token**: create a token with the "PaaS integration - installer
+   download" scope (this is what `install/02-install-oneagent.sh` uses to
+   download the OneAgent installer). Newer tenants offer two separate token
+   types with the same scope checkbox but different UI pages - either works,
+   `02-install-oneagent.sh` auto-detects which one you passed and sends the
+   matching auth header:
+   - **Access tokens (Classic)** page → token starts with `dt0c01.` → sent as
+     `Authorization: Api-Token <token>`.
+   - **Platform tokens** page → token starts with `dt0sNN.` (e.g. `dt0s16.`)
+     → sent as `Authorization: Bearer <token>`.
 3. Remember port 14499 only starts listening a minute or two **after** you
    flip the toggle above - don't troubleshoot prematurely.
 
@@ -386,7 +393,10 @@ cd /opt/dtdemo/app/loadgen
     in both env files.
 - **401/403 during OneAgent install**: the PaaS token is missing the
   "PaaS integration - installer download" scope, or `DT_ENV_URL` is wrong
-  (no trailing slash, must be the tenant base URL).
+  (no trailing slash, must be the tenant base URL). If you generated the
+  token from the wrong page, the script's auto-detected auth scheme won't
+  match what the tenant expects even with the right scope - see the token
+  type note under Dynatrace prerequisites above.
 - **Postgres auth failures** (`password authentication failed`): re-check
   `pg_hba.conf` was patched to `scram-sha-256` for `local` and
   `host 127.0.0.1/32`, and that `DB_PASSWORD` in `/etc/dtdemo/*.env` matches
