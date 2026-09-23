@@ -14,7 +14,6 @@ import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -55,9 +54,12 @@ public class OrderRepository {
     public long insertOrder(int customerId, String sku, int qty, BigDecimal unitPrice, BigDecimal totalPrice, String status) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(con -> {
+            // Naming the column keeps PostgreSQL's JDBC driver from returning every
+            // column (it implements RETURN_GENERATED_KEYS as "RETURNING *" unless a
+            // specific column is requested), which is what getKey() below requires.
             PreparedStatement ps = con.prepareStatement(
                     "INSERT INTO orders (customer_id, sku, qty, unit_price, total_price, status) VALUES (?,?,?,?,?,?)",
-                    Statement.RETURN_GENERATED_KEYS);
+                    new String[]{"id"});
             ps.setInt(1, customerId);
             ps.setString(2, sku);
             ps.setInt(3, qty);
