@@ -186,8 +186,12 @@ this repo down, so install that much by hand first:
 
 ```bash
 sudo dnf -y update
-sudo dnf -y install git java-17-amazon-corretto-devel maven python3 python3-pip curl jq tar
+sudo dnf -y install git java-17-amazon-corretto-devel maven python3 python3-pip jq tar
 ```
+
+(`curl` is deliberately not in that list — newer Amazon Linux 2023 AMIs ship
+`curl-minimal` preinstalled, and the full `curl` package conflicts with it.
+`curl-minimal` already provides everything this repo's scripts use.)
 
 Verify each landed:
 

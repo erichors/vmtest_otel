@@ -42,6 +42,10 @@ echo "==> [1/8] dnf update"
 dnf -y update
 
 echo "==> [2/8] installing packages"
+# Deliberately NOT installing `curl` here: newer AL2023 AMIs ship
+# `curl-minimal` preinstalled (providing the `curl` binary), and the full
+# `curl` package conflicts with it on upgrade/install. Nothing in this repo
+# needs anything beyond curl-minimal's feature set (-s/-S/-L/-o/-H/-X/-d).
 dnf -y install \
   java-17-amazon-corretto-devel \
   maven \
@@ -51,7 +55,6 @@ dnf -y install \
   python3-pip \
   git \
   jq \
-  curl \
   tar
 
 # ---------------------------------------------------------------------------
