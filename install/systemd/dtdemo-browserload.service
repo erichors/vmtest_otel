@@ -1,0 +1,24 @@
+[Unit]
+Description=dt-demo-app browser-driven load (headless Chromium via Playwright, runs the Dynatrace RUM JavaScript)
+After=dtdemo-java.service
+Requires=dtdemo-java.service
+# Started and stopped together with dtdemo-loadgen (see Wants= there).
+PartOf=dtdemo-loadgen.service
+
+[Service]
+Type=simple
+User=dtdemo
+Group=dtdemo
+WorkingDirectory=/opt/dtdemo/app/loadgen
+Environment=PLAYWRIGHT_BROWSERS_PATH=/opt/dtdemo/playwright
+# --duration is one day; Restart=always starts a fresh run after that.
+ExecStart=/opt/dtdemo/venv/bin/python /opt/dtdemo/app/loadgen/browser_load.py --url http://localhost:8080/ --users 3 --duration 86400 --think 2.0
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dtdemo-browserload
+
+# Not enabled on its own: `systemctl start dtdemo-loadgen` pulls it in.
+[Install]
+WantedBy=multi-user.target

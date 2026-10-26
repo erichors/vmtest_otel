@@ -5,12 +5,8 @@
   <title>dt-demo checkout</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!--
-    DYNATRACE RUM MANUAL INJECTION: paste the JavaScript tag from Dynatrace
-    (Experience Vitals / Frontends -> your app -> Setup -> Manual injection)
-    here, as the FIRST script in <head>, before any other script runs.
-    Replace this comment with the <script ...></script> tag.
-  -->
+  <!-- Dynatrace RUM manual injection: keep this as the first script in <head>. -->
+  <script type="text/javascript" src="https://js-cdn.dynatrace.com/jstag/19343e753a3/bf71982qmz/2260f1c3ed16a1dc_complete.js" crossorigin="anonymous"></script>
 
   <style>
     body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }

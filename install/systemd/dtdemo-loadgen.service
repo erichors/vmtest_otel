@@ -2,6 +2,8 @@
 Description=dt-demo-app synthetic load generator (NOT OTel-instrumented - it is the client, not part of the traced app)
 After=dtdemo-java.service dtdemo-python.service
 Requires=dtdemo-java.service dtdemo-python.service
+# Also start the browser-driven (RUM) load alongside this one.
+Wants=dtdemo-browserload.service
 
 [Service]
 Type=simple

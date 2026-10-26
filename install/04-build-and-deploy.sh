@@ -58,6 +58,11 @@ fi
 # opentelemetry-instrumentation-requests, but pin it explicitly here so the
 # load generator doesn't depend on that being true).
 /opt/dtdemo/venv/bin/pip install requests
+# browser_load.py drives headless Chromium through the checkout page so the
+# Dynatrace RUM JavaScript runs. Browsers live in a shared path so the
+# dtdemo service user can read them (no --with-deps: unsupported on AL2023).
+/opt/dtdemo/venv/bin/pip install playwright
+PLAYWRIGHT_BROWSERS_PATH=/opt/dtdemo/playwright /opt/dtdemo/venv/bin/playwright install chromium
 # Safety net: requirements.txt already pins the Flask/psycopg2/requests/logging
 # instrumentation packages explicitly, so this is mostly a no-op, but it will
 # pick up anything opentelemetry-bootstrap detects that requirements.txt didn't.
@@ -79,6 +84,7 @@ echo "==> [5/6] installing systemd units"
 cp "${SCRIPT_DIR}/systemd/dtdemo-java.service"    /etc/systemd/system/
 cp "${SCRIPT_DIR}/systemd/dtdemo-python.service"  /etc/systemd/system/
 cp "${SCRIPT_DIR}/systemd/dtdemo-loadgen.service" /etc/systemd/system/
+cp "${SCRIPT_DIR}/systemd/dtdemo-browserload.service" /etc/systemd/system/
 systemctl daemon-reload
 
 echo "==> [6/6] enabling and starting application tiers (loadgen is left disabled)"
@@ -91,7 +97,7 @@ cat <<'EOF'
 Deploy complete. dtdemo-java and dtdemo-python are enabled and running.
 dtdemo-loadgen was installed but NOT started/enabled - start it yourself
 when you're ready to demo:
-  systemctl start dtdemo-loadgen        # steady background traffic
+  systemctl start dtdemo-loadgen        # steady background traffic + browser (RUM) load
   # or run it interactively to watch stats / use --scenario:
   sudo -u dtdemo /opt/dtdemo/venv/bin/python /opt/dtdemo/app/loadgen/loadgen.py
 
