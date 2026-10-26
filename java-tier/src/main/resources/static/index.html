@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>dt-demo checkout</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!--
+    DYNATRACE RUM MANUAL INJECTION: paste the JavaScript tag from Dynatrace
+    (Experience Vitals / Frontends -> your app -> Setup -> Manual injection)
+    here, as the FIRST script in <head>, before any other script runs.
+    Replace this comment with the <script ...></script> tag.
+  -->
+
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+    label { display: block; margin-top: .75rem; }
+    input, select, button { font-size: 1rem; padding: .35rem; }
+    button { margin-top: 1rem; cursor: pointer; }
+    pre { background: #f4f4f4; padding: .75rem; overflow-x: auto; }
+    .err { color: #b00020; }
+  </style>
+</head>
+<body>
+  <h1>dt-demo checkout</h1>
+
+  <form id="order-form">
+    <label>Customer ID (1-25)
+      <input id="customerId" type="number" min="1" max="25" value="1" required>
+    </label>
+    <label>SKU
+      <input id="sku" type="text" value="ELEC-001" required>
+    </label>
+    <label>Quantity
+      <input id="qty" type="number" min="1" value="1" required>
+    </label>
+    <button id="place-order" type="submit">Place order</button>
+    <button id="view-recent" type="button">Recent orders</button>
+    <button id="view-report" type="button">Revenue report</button>
+  </form>
+
+  <h2>Result</h2>
+  <pre id="result">(nothing yet)</pre>
+
+  <script>
+    // Same-origin fetch() calls: the RUM agent instruments these and adds
+    // trace-context headers, which the OTel Java agent on checkout-java picks up.
+    const result = document.getElementById('result');
+
+    async function call(method, path, body) {
+      result.className = '';
+      result.textContent = method + ' ' + path + ' ...';
+      try {
+        const res = await fetch(path, {
+          method,
+          headers: body ? { 'Content-Type': 'application/json' } : {},
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        const text = await res.text();
+        if (!res.ok) result.className = 'err';
+        result.textContent = res.status + ' ' + res.statusText + '\n' + text;
+      } catch (e) {
+        result.className = 'err';
+        result.textContent = 'request failed: ' + e;
+      }
+    }
+
+    document.getElementById('order-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      call('POST', '/api/orders', {
+        customerId: Number(document.getElementById('customerId').value),
+        sku: document.getElementById('sku').value,
+        qty: Number(document.getElementById('qty').value),
+      });
+    });
+    document.getElementById('view-recent').addEventListener('click', () => call('GET', '/api/orders/recent?limit=10'));
+    document.getElementById('view-report').addEventListener('click', () => call('GET', '/api/reports/revenue'));
+  </script>
+</body>
+</html>
